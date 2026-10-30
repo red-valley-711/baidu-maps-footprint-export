@@ -20,6 +20,7 @@ from types import SimpleNamespace
 
 import baidu_adb_collector as core
 import parse_baidu_hex_tracks as convert
+import steplife_gpx
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 UUID_CSV = re.compile(r"[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}\.csv(?:\.gz)?")
@@ -211,6 +212,25 @@ def export(config: dict) -> dict:
     return manifest
 
 
+def steplife_export(
+    config: dict,
+    *,
+    time_mode: str,
+    max_points: int = steplife_gpx.DEFAULT_BATCH_POINTS,
+    pilot_track: str | None = None,
+) -> dict:
+    return steplife_gpx.export(
+        raw_dir=config["raw_dir"],
+        state_db=config["state_dir"] / "collector.sqlite3",
+        output_dir=config["output_dir"],
+        prefix=config["prefix"],
+        timezone_offset_hours=float(config["timezone_offset_hours"]),
+        time_mode=time_mode,
+        max_points=max_points,
+        pilot_track=pilot_track,
+    )
+
+
 def next_month(connection, start, end, excluded=(), only=None):
     allowed = list(month_range(start, end))
     excluded = set(excluded)
@@ -385,13 +405,25 @@ def pull_cache(config):
 def cli():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
-    for name in ("export", "plan", "collect", "pull-cache"):
+    for name in ("export", "steplife", "plan", "collect", "pull-cache"):
         p = sub.add_parser(name)
         p.add_argument("--config", help="JSON configuration (relative paths resolve from this file)")
         for option in ("workspace", "raw-dir", "state-dir", "output-dir", "adb", "device", "cache-dir", "prefix", "profile"):
             p.add_argument("--" + option)
         p.add_argument("--formats", help="geojson,gpx,kml,points-csv,summary-csv")
         p.add_argument("--timezone-offset-hours", type=float)
+        if name == "steplife":
+            p.add_argument(
+                "--time-mode",
+                required=True,
+                choices=("matched-start-order",),
+                help=(
+                    "Required explicit opt-in: preserve the matched trip start "
+                    "and assign later points monotonic compatibility offsets"
+                ),
+            )
+            p.add_argument("--max-points", type=int, default=steplife_gpx.DEFAULT_BATCH_POINTS)
+            p.add_argument("--pilot-track", help="Optional matched UUID to isolate as the pilot")
         if name in ("collect", "plan"):
             p.add_argument("--start", type=month, required=True, help="Newest month, inclusive")
             p.add_argument("--end", type=month, required=True, help="Oldest month, inclusive")
@@ -423,9 +455,24 @@ def cli():
             parser.error("Choose retry-unresolved or audit-months separately")
         if args.legacy_year and not re.fullmatch(r"20\d{2}", args.legacy_year):
             parser.error("legacy-year must be a four-digit year between 2000 and 2099")
+    if args.command == "steplife" and args.max_points < 2:
+        parser.error("max-points must be at least 2")
     config = configure(args)
     if args.command == "export":
         print(json.dumps(export(config), ensure_ascii=False, indent=2))
+    elif args.command == "steplife":
+        print(
+            json.dumps(
+                steplife_export(
+                    config,
+                    time_mode=args.time_mode,
+                    max_points=args.max_points,
+                    pilot_track=args.pilot_track,
+                ),
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
     elif args.command == "plan":
         plan(config, args)
     elif args.command == "pull-cache":

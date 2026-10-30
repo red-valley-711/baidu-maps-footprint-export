@@ -8,6 +8,28 @@
 
 包中示例的缓存路径留空，不能据此定位任何账户。历史证据里的数字和年份不构成用户的逐条轨迹。不要把整个原任务 outputs 目录或个人版 ZIP 上传 GitHub。
 
+发布前运行：
+
+```powershell
+python scripts/audit_public_tree.py .
+python -m unittest discover -s tests -v
+```
+
+审计会拒绝 CSV、CSV.GZ、GPX、KML、GeoJSON、SQLite/DB、JSONL、日志、图片、电子表格、压缩包、HTTP 归档、`config.local.json`、`*.local.json`、`.env`、私钥/凭据文件和明显密钥。它只覆盖本仓库目录，不能证明外部备份或 GitHub 历史没有旧泄漏；发现旧提交含数据时仍需单独清理远端历史。
+
+## StepLife 可选输出
+
+`steplife` 子命令只读原始 CSV 和状态库，默认把结果写到 `output_dir/steplife/<prefix>`。`.gitignore` 已忽略 `steplife/`、`revisions/` 与常见数据扩展名，但用户仍应在提交前运行审计。
+
+为了减少导出本身的敏感信息：
+
+- GPX track name 使用序号，不包含源 UUID、地址或地点指纹。
+- manifest 只含数量、文件哈希、时间策略和汇总分配统计，不含源路径、UUID、fingerprint 或地址。
+- `review_required` 中的未匹配轨迹也不含时间，不能误当真实日期导入。
+- 原始 CSV 导出前后逐文件 SHA-256 一致；状态库以 SQLite read-only URI 打开。
+
+输出文件仍含个人坐标和时间，只是去掉了直接标识字段；它仍是敏感的个人数据资产。不得上传、粘贴到 issue、附在 Skill ZIP 或提交到公开仓库。
+
 ## 本次发现并修复的实际风险
 
 1. 旧版允许 raw=state/pulls，可能导致 adb pull 与原始文件同路径，后续 duplicate 清理误删原文件。现在配置入口拒绝 raw/state/output 任意嵌套，核心拉取函数也独立检查 raw/pulls 不重叠，临时文件采用随机名，最终文件用独占创建模式。

@@ -25,7 +25,7 @@ dataTime,locType,longitude,latitude,heading,accuracy,speed,distance,isBackForegr
 
 来源：[steplife-universal-importer/internal/model/steplife.go](https://github.com/hygao1024/steplife-universal-importer/blob/main/internal/model/steplife.go)。这是用户指定的第三方转换项目模型，不等于已对所有一生足迹版本完成导入实测。该文件本身也不足以确认 dataTime 的时间单位、时区以及每个字段的可空/默认值规则。
 
-用户本次“CSV 表头错误”的原因已明确是模板不匹配。不能直接导入 QGIS CSV，不能只改扩展名，也不能仅把经纬度列重命名就宣称完全兼容。需要完整的目标字段映射，并按目标实现核对时间、坐标系、字段类型和缺失值处理。当前脚本没有实现或验证一生足迹专用输出，`--formats` 中也没有这种格式。
+用户本次“CSV 表头错误”的原因已明确是模板不匹配。不能直接导入 QGIS CSV，不能只改扩展名，也不能仅把经纬度列重命名就宣称完全兼容。当前实现选择 GPX 兼容输出，不生成上述 CSV 模板。
 
 尤其是 dataTime：本次源 CSV 没有逐点时间戳，缺失信息不能通过改表头恢复。保留原始数据及 QGIS 成果，不用缓存修改时间、当前时间或任意固定间隔自动伪造真实采样时间。
 
@@ -35,7 +35,31 @@ dataTime,locType,longitude,latitude,heading,accuracy,speed,distance,isBackForegr
 
 排查时区分三个事实：XML 能否解析、是否存在带有效 lat/lon 的 trkpt、是否存在有效逐点 time。不能仅根据目标 App 的提示宣称导出没坐标、轨迹损坏或需要重新采集。无时间点是否被该导入器过滤，需要检查目标解析逻辑或最小样本实测；目前不能把缺时间戳断言成唯一已证实原因。
 
-在目标软件验证通过之前，只承诺现有 GeoJSON/GPX/KML 保留了空间轨迹，不宣称可直接导入一生足迹。后续兼容转换应另存新文件并检查点数及时间来源，不能覆盖原成果来试错。
+### 可选的一生足迹兼容输出
+
+用户实测后确认了第二个关键行为：同一条轨迹里的所有点使用相同时间时，安卓版一生足迹只留下很少的点状结果；一个 277 点、逐点时间各不相同的最小样本可以正常显示轨迹。因此兼容输出必须让轨迹内时间不同，但不能把兼容值说成真实采样时间。
+
+使用独立命令，不混入默认 `export`：
+
+```powershell
+python scripts/footprint_export.py steplife `
+  --config config.local.json `
+  --prefix my_tracks `
+  --time-mode matched-start-order `
+  --max-points 100000
+```
+
+`--time-mode matched-start-order` 是强制显式确认，不提供把行程起点重复给全部点的快捷模式。生成规则：
+
+1. 只读状态库 `records.new_file` 与 `records.fingerprint`，把 UUID 匹配到可解析的真实行程起点；冲突、缺失或无法解析的轨迹不猜日期。
+2. 每条轨迹第一点保留真实起点。原始 CSV 的 `speed_raw` 单位未独立验证，不能当作米/秒；后续点只按 1 秒递增分配兼容序号，并跳过已占用时间或其他轨迹的真实起点。
+3. 不同轨迹若有相同真实起点，保留该真实值；只要求每条轨迹内部时间唯一。分配后逐轨迹检查重复时间，并汇总重复真实起点数量。
+4. 未匹配轨迹单独写入 `review_required/no_verified_start.gpx`，`time` 全部省略，不进入 import_ready。
+5. 输出写到 `output_dir/steplife/<prefix>`，重跑自动进入 `output_dir/steplife/revisions/...`，不覆盖首次成果。原 CSV 前后 SHA-256 必须一致。
+
+manifest 汇总真实起点数、兼容序号跨度、最大分配漂移、重复起点数和跨午夜轨迹数，但不写源 UUID、地点指纹、地址或源路径。只有行程起点是真实时间；其他点时间既不是采样值，也不是速度或距离估算。跨午夜属于兼容序号分配后的可观察结果，必须如实报告。
+
+现有 277 点实机数据只确认了单条轨迹能显示。安卓版一生足迹是否会把“不同轨迹但起点相同”的点做全局合并尚未验证；输出保留这些真实起点，出现跨轨迹合并时应继续做目标 App 最小样本测试，不能静默改时间。
 
 ## 导出
 

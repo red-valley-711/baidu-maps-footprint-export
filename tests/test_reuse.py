@@ -19,11 +19,14 @@ SCRIPTS = Path(__file__).resolve().parents[1] / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 import footprint_export as app
 import baidu_adb_collector as core
+import audit_public_tree as public_tree
 
 A = "00000000-0000-4000-8000-000000000001"
 B = "00000000-0000-4000-8000-000000000002"
+C = "00000000-0000-4000-8000-000000000003"
 ROWS5 = "12958000,4826000,1.5,90,5\n12958010,4826010,1.7,92,5\n"
 ROWS7 = "12958020,4826020,2,91,6,0,1\n12958030,4826030,3,93,6,0,1\n"
+ROWS5C = "12958040,4826040,2.2,94,6\n12958050,4826050,2.4,96,6\n"
 
 
 def ui(bottom=1253, year="2022", full_address=True):
@@ -99,6 +102,122 @@ class ReuseTests(unittest.TestCase):
             (conf["raw_dir"] / (A + ".csv.gz")).write_bytes(gzip.compress(ROWS7.encode()))
             with self.assertRaisesRegex(ValueError, "Conflicting"):
                 app.export(conf)
+
+    def test_optional_steplife_output_is_private_and_non_destructive(self):
+        with tempfile.TemporaryDirectory(prefix="footprint-steplife-") as tmp:
+            root = Path(tmp)
+            conf = config(root, formats="geojson")
+            conf["raw_dir"].mkdir()
+            conf["state_dir"].mkdir()
+            for key, rows in ((A, ROWS5), (B, ROWS7), (C, ROWS5C)):
+                (conf["raw_dir"] / f"{key}.csv").write_text(rows, encoding="utf-8")
+            db_path = conf["state_dir"] / "collector.sqlite3"
+            connection = sqlite3.connect(db_path)
+            connection.execute(
+                "CREATE TABLE records(new_file TEXT, fingerprint TEXT)"
+            )
+            connection.executemany(
+                "INSERT INTO records VALUES (?, ?)",
+                [
+                    (A + ".csv", "2024|01月02日 08:30|synthetic-place"),
+                    (B + ".csv", "2024|01月02日 08:30|synthetic-place"),
+                ],
+            )
+            connection.commit()
+            connection.close()
+            source_before = {
+                path.name: core.sha256(path)
+                for path in conf["raw_dir"].iterdir()
+            }
+
+            report = app.steplife_export(
+                conf,
+                time_mode="matched-start-order",
+                max_points=2,
+                pilot_track=A,
+            )
+            destination = Path(report["delivery_directory"])
+            imports = sorted((destination / "import_ready").glob("*.gpx"))
+            review = destination / "review_required" / "review_no_verified_start.gpx"
+            self.assertEqual([path.name for path in imports], [
+                "steplife_00_pilot.gpx",
+                "steplife_01.gpx",
+            ])
+            import_times = []
+            for path in imports:
+                parsed = ET.parse(path)
+                for track in parsed.findall(".//{*}trk"):
+                    track_times = [
+                        node.text for node in track.findall(".//{*}time")
+                    ]
+                    self.assertEqual(len(track_times), len(set(track_times)))
+                    import_times.extend(track_times)
+            review_xml = ET.parse(review)
+            self.assertEqual(len(import_times), 4)
+            self.assertEqual(
+                import_times,
+                [
+                    "2024-01-02T13:30:00Z",
+                    "2024-01-02T13:30:01Z",
+                    "2024-01-02T13:30:00Z",
+                    "2024-01-02T13:30:02Z",
+                ],
+            )
+            self.assertEqual(report["duplicate_verified_start_count"], 1)
+            self.assertEqual(report["unique_timestamp_count"], 3)
+            self.assertEqual(
+                len(review_xml.findall(".//{*}trkpt")),
+                2,
+            )
+            self.assertFalse(review_xml.findall(".//{*}time"))
+            manifest_text = (destination / "manifest.json").read_text(
+                encoding="utf-8"
+            )
+            public_text = manifest_text
+            for path in [*imports, review]:
+                public_text += path.read_text(encoding="utf-8")
+            for private_value in (A, B, C, "synthetic-place"):
+                self.assertNotIn(private_value, public_text)
+            self.assertEqual(source_before, {
+                path.name: core.sha256(path)
+                for path in conf["raw_dir"].iterdir()
+            })
+
+            saved_pilot = core.sha256(imports[0])
+            second = app.steplife_export(
+                conf,
+                time_mode="matched-start-order",
+                max_points=2,
+                pilot_track=A,
+            )
+            self.assertNotEqual(report["delivery_directory"], second["delivery_directory"])
+            self.assertEqual(saved_pilot, core.sha256(imports[0]))
+
+    def test_steplife_requires_explicit_time_mode(self):
+        with tempfile.TemporaryDirectory(prefix="footprint-steplife-") as tmp:
+            conf = config(Path(tmp), formats="geojson")
+            with self.assertRaisesRegex(ValueError, "explicit"):
+                app.steplife_export(
+                    conf,
+                    time_mode="trip-start-only",
+                    max_points=2,
+                )
+
+    def test_public_tree_audit_rejects_local_assets(self):
+        with tempfile.TemporaryDirectory(prefix="footprint-audit-") as tmp:
+            root = Path(tmp)
+            (root / "README.md").write_text("synthetic public text", encoding="utf-8")
+            (root / "config.example.json").write_text("{}", encoding="utf-8")
+            self.assertEqual(public_tree.audit(root), [])
+            (root / "synthetic.csv").write_text("1,2,3", encoding="utf-8")
+            (root / "config.local.json").write_text("{}", encoding="utf-8")
+            (root / ".env").write_text("placeholder=value", encoding="utf-8")
+            (root / "private.md").write_text(
+                "-----BEGIN " + "PRIVATE KEY-----",
+                encoding="utf-8",
+            )
+            issues = public_tree.audit(root)
+            self.assertEqual(len(issues), 4)
 
     def test_bad_rows_and_nonfinite_rejected(self):
         with tempfile.TemporaryDirectory() as tmp:
