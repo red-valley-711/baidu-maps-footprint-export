@@ -1,0 +1,12 @@
+{
+  "workspace": "./my-export",
+  "raw_dir": "raw",
+  "state_dir": "state",
+  "output_dir": "qgis",
+  "adb": "adb",
+  "device": "emulator-5554",
+  "cache_dir": "",
+  "formats": "geojson,gpx,kml",
+  "prefix": "baidu_tracks",
+  "timezone_offset_hours": 8
+}

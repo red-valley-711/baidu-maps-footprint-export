@@ -1,0 +1,17 @@
+This package was distilled from a user-authorized local Baidu Maps export session.
+It contains no Baidu APK, third-party executable, personal trajectory dataset,
+credential, Cookie, or private consumer API implementation.
+
+The BD-09MC/BD-09LL/GCJ-02/WGS84 transformations preserve the numerical
+implementation used in that session. These coordinate systems and commonly
+circulated numerical formulas are not claimed as original inventions. The
+retained session artifacts do not establish the earliest provenance of every
+formula. No source files or binaries from TrajectoryCombine are redistributed.
+
+Historical references for context:
+https://linux.do/t/topic/1039881
+https://github.com/hongwenjun/TrajectoryCombine
+https://lbs.baidu.com/docs/webapi?title=yingyan%2Fapi%2Fv3%2Ftrackexport
+
+Baidu Maps and LDPlayer are trademarks of their respective owners. This project
+is independent and not endorsed by those products.

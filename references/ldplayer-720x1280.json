@@ -1,0 +1,9 @@
+{
+  "screen_size": [720, 1280],
+  "year_wheel_x": 230,
+  "month_wheel_x": 510,
+  "wheel_y": 990,
+  "wheel_step": 100,
+  "year_crop": [40, 900, 382, 1020],
+  "month_crop": [382, 900, 680, 1020]
+}

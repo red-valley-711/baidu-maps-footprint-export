@@ -1,0 +1,3 @@
+# Only live Windows collection/OCR cropping requires Pillow.
+Pillow>=10
+# YAML is used by Codex's optional skill validation helper, not the exporter.
