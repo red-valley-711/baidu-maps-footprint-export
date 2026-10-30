@@ -48,7 +48,7 @@ python scripts/footprint_export.py plan --config config.local.json --start 2024-
 - 每条轨迹第一点保留真实起点；后续点只分配单调递增的兼容序号秒，确保轨迹内部不同。`speed_raw` 单位未验证，不用距离或速度推算时间。
 - 不同轨迹的真实起点相同时保留该真实值；只承诺每条轨迹内部唯一，不为了全局唯一而改动真实起点。
 - 输出只写到本机 `output_dir/steplife/<prefix>`；不覆盖已有结果，重跑进入 revisions。交付目录含分批 `import_ready`、无时间 `review_required`、manifest、中文说明和导入顺序。
-- GPX 与 manifest 不写源 UUID、地点指纹、地址或源路径。不要把输出目录、ZIP、数据库或运行日志提交到本仓库。
+- GPX 与 manifest 不写源 UUID、地点指纹、地址、源路径或绝对本机路径。manifest 只使用相对交付目录和文件名；不要把输出目录、ZIP、数据库或运行日志提交到本仓库。
 - 必须明确说明只有行程起点真实，后续时间是仅用于导入兼容的序号。轨迹跨当地午夜时如实报告，不能宣称逐点采样时间恢复成功。
 
 复用测试：`python -m unittest discover -s tests -v`。测试使用临时合成数据，覆盖换目录/前缀/格式/时区、5/7 列与 gzip 合并、跨年去重、底部卡片、月份断点、定向重试、StepLife 单轨迹时间唯一性、重复真实起点保留、无时间复核和重跑不覆盖。参见 `references/validation-report.md` 了解本次测试范围；离线通过不代表新的 App 版本已经通过实时采集验证。

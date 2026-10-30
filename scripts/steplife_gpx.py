@@ -262,7 +262,6 @@ def validate_gpx(path: Path, expected: dict) -> dict:
 
 
 def _write_readme(destination: Path, report: dict):
-    import_dir = destination / "import_ready"
     files = "\n".join(
         f"{index:02d}. {item['file']}"
         for index, item in enumerate(report["import_files"], start=1)
@@ -272,7 +271,7 @@ def _write_readme(destination: Path, report: dict):
 按顺序逐个导入：
 {files}
 
-导入包：{import_dir}
+导入包：import_ready/
 
 可匹配足迹：{report['matched_track_count']}
 可匹配点：{report['matched_point_count']}
@@ -524,9 +523,10 @@ def export(
             "contains_source_uuids": False,
             "contains_location_fingerprints": False,
             "contains_source_paths": False,
+            "contains_absolute_local_paths": False,
             "source_files_unchanged": True,
         },
-        "delivery_directory": str(destination.resolve()),
+        "delivery_directory": destination.relative_to(output_dir).as_posix(),
     }
     (staging / "manifest.json").write_text(
         json.dumps(report, ensure_ascii=False, indent=2),
@@ -534,9 +534,4 @@ def export(
     )
     _write_readme(staging, report)
     staging.replace(destination)
-    report["delivery_directory"] = str(destination.resolve())
-    (destination / "manifest.json").write_text(
-        json.dumps(report, ensure_ascii=False, indent=2),
-        encoding="utf-8",
-    )
     return report

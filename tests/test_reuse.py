@@ -136,7 +136,8 @@ class ReuseTests(unittest.TestCase):
                 max_points=2,
                 pilot_track=A,
             )
-            destination = Path(report["delivery_directory"])
+            destination = conf["output_dir"] / report["delivery_directory"]
+            self.assertEqual(report["delivery_directory"], "steplife/alternate")
             imports = sorted((destination / "import_ready").glob("*.gpx"))
             review = destination / "review_required" / "review_no_verified_start.gpx"
             self.assertEqual([path.name for path in imports], [
@@ -173,11 +174,17 @@ class ReuseTests(unittest.TestCase):
             manifest_text = (destination / "manifest.json").read_text(
                 encoding="utf-8"
             )
-            public_text = manifest_text
-            for path in [*imports, review]:
-                public_text += path.read_text(encoding="utf-8")
-            for private_value in (A, B, C, "synthetic-place"):
+            manifest = json.loads(manifest_text)
+            self.assertEqual(manifest["delivery_directory"], "steplife/alternate")
+            self.assertFalse(manifest["privacy"]["contains_absolute_local_paths"])
+            public_text = "\n".join(
+                path.read_text(encoding="utf-8-sig", errors="replace")
+                for path in destination.rglob("*")
+                if path.is_file()
+            )
+            for private_value in (A, B, C, "synthetic-place", str(root)):
                 self.assertNotIn(private_value, public_text)
+            self.assertIn("导入包：import_ready/", public_text)
             self.assertEqual(source_before, {
                 path.name: core.sha256(path)
                 for path in conf["raw_dir"].iterdir()
@@ -191,6 +198,14 @@ class ReuseTests(unittest.TestCase):
                 pilot_track=A,
             )
             self.assertNotEqual(report["delivery_directory"], second["delivery_directory"])
+            self.assertTrue(second["delivery_directory"].startswith("steplife/revisions/"))
+            second_destination = conf["output_dir"] / second["delivery_directory"]
+            second_text = "\n".join(
+                path.read_text(encoding="utf-8-sig", errors="replace")
+                for path in second_destination.rglob("*")
+                if path.is_file()
+            )
+            self.assertNotIn(str(root), second_text)
             self.assertEqual(saved_pilot, core.sha256(imports[0]))
 
     def test_steplife_requires_explicit_time_mode(self):
