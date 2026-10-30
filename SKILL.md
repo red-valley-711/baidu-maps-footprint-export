@@ -1,9 +1,9 @@
 ---
-name: baidu-footprint-export
-description: Export Baidu Maps personal footprint history using verified local UUID CSV caches and month-by-month emulator ADB collection, convert BD-09MC tracks to WGS84 GeoJSON, GPX or KML for QGIS, and optionally build Android StepLife-compatible GPX with verified trip starts and compatibility-only later timestamps. Use for 我的足迹/历史轨迹 export and interrupted collection recovery.
+name: baidu-maps-footprint-export
+description: Export and recover personal Baidu Maps footprints and historical location tracks (百度地图足迹/历史轨迹) from a user-owned Android device or emulator, then convert cached CSV tracks to WGS84 GeoJSON, GPX, or KML for QGIS. Use for interrupted ADB collection recovery and optional StepLife-compatible GPX export.
 ---
 
-# 百度地图足迹导出
+# Baidu Maps Footprint Export / 百度地图个人足迹与历史轨迹导出
 
 复用已经实际跑通的“App 打开历史记录 → App 生成 CSV → 电脑只读拉取 → 转换”流程。脚本运行在电脑，手机或模拟器只接受普通 UI 操作和文件读取；uiautomator 会在共享存储写入一个临时 UI XML，不是修改系统。不得使用 Root、`su`、`run-as`、抓取凭证或替代消费者足迹接口的鹰眼 API。
 

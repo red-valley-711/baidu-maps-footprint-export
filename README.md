@@ -1,12 +1,16 @@
-# baidu-footprint-export
+# Baidu Maps Footprint Export / 百度地图个人足迹与历史轨迹导出
 
-百度地图个人足迹导出 Skill。通过已登录模拟器逐月打开记录，让百度地图正常生成本地 UUID CSV，再由电脑只读拉取，转换为 WGS84 GeoJSON、GPX、KML。没有消费者云端接口或 Cookie 抓取。
+An AI Agent Skill for exporting personal footprint and historical location records from the Baidu Maps Android app using a user-owned, logged-in device or emulator. The workflow reads locally generated UUID CSV caches, then converts BD-09MC tracks to WGS84 GeoJSON, GPX, and KML for QGIS.
+
+百度地图个人足迹与历史轨迹导出 Skill。通过已登录的 Android 设备或模拟器逐月打开“我的足迹”，让百度地图正常生成本地 UUID CSV，再由电脑只读拉取并转换。它不是百度官方消费者导出接口，不抓取 Cookie，也不保证任意账号或 App 版本都能恢复全部云端历史。
+
+**Search terms / 检索词：** Baidu Maps footprint export, Baidu Map track export, location history backup, 百度地图足迹导出, 百度地图历史轨迹导出, GPS track converter, AI Agent Skill, Codex Skill, Claude Skill, GPX, GeoJSON, KML, QGIS.
 
 QGIS 格式之外，可显式选择生成安卓版“一生足迹”兼容的本地导入包。该输出只把可核对的百度行程起点记为真实时间；后续点为避免 App 合并同一时间的点，仅追加单调递增的兼容序号，不声称是原始采样时间或速度推算结果。
 
 ## 使用
 
-将整个文件夹安装到 `~/.codex/skills/baidu-footprint-export`，然后调用 `$baidu-footprint-export`。也可直接用命令行：
+将整个文件夹安装到 `~/.codex/skills/baidu-maps-footprint-export`，然后调用 `$baidu-maps-footprint-export`。也可直接用命令行：
 
 ```powershell
 python scripts/footprint_export.py export --raw-dir ./raw --output-dir ./qgis --formats geojson,gpx,kml --prefix my_tracks

@@ -1,4 +1,4 @@
 interface:
   display_name: "百度地图足迹导出"
   short_description: "复用模拟器逐月采集、断点恢复、QGIS 导出及可选一生足迹兼容 GPX"
-  default_prompt: "使用 $baidu-footprint-export 检查现有足迹与断点，按我指定的日期和输出目录导出，先验证再续采。"
+  default_prompt: "使用 $baidu-maps-footprint-export 检查现有足迹与断点，按我指定的日期和输出目录导出，先验证再续采。"
